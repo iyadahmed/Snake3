@@ -53,28 +53,27 @@ def handle_input(game: Game):
 def handle_logic(game: Game):
     snake_head = game.snake[-1]
 
-    # Collision detection
-    if snake_head.x == game.food.x and snake_head.y == game.food.y:
-        game.snake.append(copy.deepcopy(game.snake[-1]))
-        snake_head = game.snake[-1]
-        game.food.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
-        game.food.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
-
-    # Move snake
-    for snake_part, next_snake_part in zip(game.snake, game.snake[1:]):
-        snake_part.x = next_snake_part.x
-        snake_part.y = next_snake_part.y
-
     # Move head
+    new_snake_head = copy.deepcopy(snake_head)
     match game.snake_direction:
         case Direction.RIGHT:
-            snake_head.x += BLOCK_SIZE
+            new_snake_head.x += BLOCK_SIZE
         case Direction.LEFT:
-            snake_head.x -= BLOCK_SIZE
+            new_snake_head.x -= BLOCK_SIZE
         case Direction.UP:
-            snake_head.y -= BLOCK_SIZE
+            new_snake_head.y -= BLOCK_SIZE
         case Direction.DOWN:
-            snake_head.y += BLOCK_SIZE
+            new_snake_head.y += BLOCK_SIZE
+
+    game.snake.append(new_snake_head)
+
+    # Collision detection
+    if snake_head.x == game.food.x and snake_head.y == game.food.y:
+        game.food.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
+        game.food.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
+    else:
+        # We allow snake to grow if we hit food otherwise, we pop tail
+        game.snake.pop(0)
 
 
 def render(game: Game, window: pygame.Surface):
