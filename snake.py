@@ -1,4 +1,3 @@
-import copy
 import random
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -18,74 +17,98 @@ class Direction(Enum):
 
 
 @dataclass()
-class Position:
+class IntVector2D:
     x: int
     y: int
+
+    def __add__(self, other: "IntVector2D"):
+        return IntVector2D(self.x + other.x, self.y + other.y)
+
+
+class Snake:
+    def __init__(self, body: list[IntVector2D], direction: Direction) -> None:
+        self.body = body
+        self.direction = direction
+
+    def move(self, delta: IntVector2D, grow: bool):
+        """Moves snake by moving the head using delta, it also moves the body accordingly"""
+        if grow:
+            self.body.append(IntVector2D(0, 0))
+
+        for part, next_part in zip(self.body[::-1], self.body[::-1][1:]):
+            part.x = next_part.x
+            part.y = next_part.y
+
+        self.body[0] += delta
+
+    def head(self):
+        return self.body[0]
 
 
 @dataclass
 class Game:
-    food: Position
-    snake_direction: Direction
-    snake: list[Position]
-    running: bool = True
+    food_position: IntVector2D
+    snake: Snake
+    is_running: bool = True
 
 
 def handle_input(game: Game):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            game.running = False
+            game.is_running = False
             return
 
         elif event.type == pygame.KEYDOWN:
             # Change direction based on key
             match event.key:
                 case pygame.K_RIGHT:
-                    game.snake_direction = Direction.RIGHT
+                    game.snake.direction = Direction.RIGHT
                 case pygame.K_LEFT:
-                    game.snake_direction = Direction.LEFT
+                    game.snake.direction = Direction.LEFT
                 case pygame.K_DOWN:
-                    game.snake_direction = Direction.DOWN
+                    game.snake.direction = Direction.DOWN
                 case pygame.K_UP:
-                    game.snake_direction = Direction.UP
+                    game.snake.direction = Direction.UP
 
 
 def handle_logic(game: Game):
-    snake_head = game.snake[-1]
-
-    # Move head
-    new_snake_head = copy.deepcopy(snake_head)
-    match game.snake_direction:
+    # Calculate head movement
+    head_delta = IntVector2D(0, 0)
+    match game.snake.direction:
         case Direction.RIGHT:
-            new_snake_head.x += BLOCK_SIZE
+            head_delta.x += BLOCK_SIZE
         case Direction.LEFT:
-            new_snake_head.x -= BLOCK_SIZE
+            head_delta.x -= BLOCK_SIZE
         case Direction.UP:
-            new_snake_head.y -= BLOCK_SIZE
+            head_delta.y -= BLOCK_SIZE
         case Direction.DOWN:
-            new_snake_head.y += BLOCK_SIZE
-
-    game.snake.append(new_snake_head)
+            head_delta.y += BLOCK_SIZE
 
     # Collision detection
-    if snake_head.x == game.food.x and snake_head.y == game.food.y:
-        game.food.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
-        game.food.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
-    else:
-        # We allow snake to grow if we hit food otherwise, we pop tail
-        game.snake.pop(0)
+    did_hit_food = game.snake.head() == game.food_position
+
+    if did_hit_food:
+        game.food_position.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
+        game.food_position.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
+
+    game.snake.move(head_delta, grow=did_hit_food)
 
 
-def render(game: Game, window: pygame.Surface):
+def render(game: Game, surface: pygame.Surface):
     # Clear screen
-    window.fill((0, 0, 0))
+    surface.fill((0, 0, 0))
 
     # Draw food
-    window.fill((255, 0, 0), (game.food.x, game.food.y, BLOCK_SIZE, BLOCK_SIZE))
+    surface.fill(
+        (255, 0, 0),
+        (game.food_position.x, game.food_position.y, BLOCK_SIZE, BLOCK_SIZE),
+    )
 
     # Draw snake
-    for snake_part in game.snake:
-        window.fill((255, 255, 0), (snake_part.x, snake_part.y, BLOCK_SIZE, BLOCK_SIZE))
+    for snake_part in game.snake.body:
+        surface.fill(
+            (255, 255, 0), (snake_part.x, snake_part.y, BLOCK_SIZE, BLOCK_SIZE)
+        )
 
     pygame.display.flip()
 
@@ -99,15 +122,14 @@ def main():
     )
 
     # Init game state
-    food = Position(
+    food_position = IntVector2D(
         WIDTH_IN_BLOCKS * BLOCK_SIZE // 2,
         HEIGHT_IN_BLOCKS * BLOCK_SIZE // 2,
     )
-    snake_direction = Direction.RIGHT
-    snake: list[Position] = [Position(0, 0)]
-    game = Game(food, snake_direction, snake)
+    snake = Snake([IntVector2D(0, 0)], Direction.RIGHT)
+    game = Game(food_position, snake)
 
-    while game.running:
+    while game.is_running:
         handle_input(game)
         handle_logic(game)
         render(game, window)
