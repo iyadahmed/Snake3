@@ -23,6 +23,74 @@ class Position:
     y: int
 
 
+@dataclass
+class Game:
+    food: Position
+    snake_direction: Direction
+    snake: list[Position]
+    running: bool = True
+
+
+def handle_input(game: Game):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            game.running = False
+            return
+
+        elif event.type == pygame.KEYDOWN:
+            # Change direction based on key
+            match event.key:
+                case pygame.K_RIGHT:
+                    game.snake_direction = Direction.RIGHT
+                case pygame.K_LEFT:
+                    game.snake_direction = Direction.LEFT
+                case pygame.K_DOWN:
+                    game.snake_direction = Direction.DOWN
+                case pygame.K_UP:
+                    game.snake_direction = Direction.UP
+
+
+def handle_logic(game: Game):
+    snake_head = game.snake[-1]
+
+    # Collision detection
+    if snake_head.x == game.food.x and snake_head.y == game.food.y:
+        game.snake.append(copy.deepcopy(game.snake[-1]))
+        snake_head = game.snake[-1]
+        game.food.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
+        game.food.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
+
+    # Move snake
+    for snake_part, next_snake_part in zip(game.snake, game.snake[1:]):
+        snake_part.x = next_snake_part.x
+        snake_part.y = next_snake_part.y
+
+    # Move head
+    match game.snake_direction:
+        case Direction.RIGHT:
+            snake_head.x += BLOCK_SIZE
+        case Direction.LEFT:
+            snake_head.x -= BLOCK_SIZE
+        case Direction.UP:
+            snake_head.y -= BLOCK_SIZE
+        case Direction.DOWN:
+            snake_head.y += BLOCK_SIZE
+
+
+def render(game: Game, window: pygame.Surface):
+    # Clear screen
+    window.fill((0, 0, 0))
+
+    # Draw food
+    window.fill((255, 0, 0), (game.food.x, game.food.y, BLOCK_SIZE, BLOCK_SIZE))
+
+    # Draw snake
+    for snake_part in game.snake:
+        window.fill((255, 255, 0), (snake_part.x, snake_part.y, BLOCK_SIZE, BLOCK_SIZE))
+
+    pygame.display.flip()
+
+
 def main():
     pygame.init()
     clock = pygame.time.Clock()
@@ -38,72 +106,12 @@ def main():
     )
     snake_direction = Direction.RIGHT
     snake: list[Position] = [Position(0, 0)]
+    game = Game(food, snake_direction, snake)
 
-    while True:
-        # Clear screen
-        window.fill((0, 0, 0))
-
-        #####################
-        ##      Input      ##
-        #####################
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return
-            elif event.type == pygame.KEYDOWN:
-                # Change direction based on key
-                match event.key:
-                    case pygame.K_RIGHT:
-                        snake_direction = Direction.RIGHT
-                    case pygame.K_LEFT:
-                        snake_direction = Direction.LEFT
-                    case pygame.K_DOWN:
-                        snake_direction = Direction.DOWN
-                    case pygame.K_UP:
-                        snake_direction = Direction.UP
-
-        ################################
-        ##      Physics and Logic     ##
-        ################################
-
-        snake_head = snake[-1]
-
-        # Collision detection
-        if snake_head.x == food.x and snake_head.y == food.y:
-            snake.append(copy.deepcopy(snake[-1]))
-            snake_head = snake[-1]
-            food.x = random.randrange(0, WIDTH_IN_BLOCKS) * BLOCK_SIZE
-            food.y = random.randrange(0, HEIGHT_IN_BLOCKS) * BLOCK_SIZE
-
-        # Move snake
-        for snake_part, next_snake_part in zip(snake, snake[1:]):
-            snake_part.x = next_snake_part.x
-            snake_part.y = next_snake_part.y
-
-        # Move head
-        match snake_direction:
-            case Direction.RIGHT:
-                snake_head.x += BLOCK_SIZE
-            case Direction.LEFT:
-                snake_head.x -= BLOCK_SIZE
-            case Direction.UP:
-                snake_head.y -= BLOCK_SIZE
-            case Direction.DOWN:
-                snake_head.y += BLOCK_SIZE
-
-        #####################
-        ##      Render     ##
-        #####################
-
-        # Draw food
-        window.fill((255, 0, 0), (food.x, food.y, BLOCK_SIZE, BLOCK_SIZE))
-
-        # Draw snake
-        for snake_part in snake:
-            window.fill(
-                (255, 255, 0), (snake_part.x, snake_part.y, BLOCK_SIZE, BLOCK_SIZE)
-            )
-
-        pygame.display.flip()
+    while game.running:
+        handle_input(game)
+        handle_logic(game)
+        render(game, window)
         clock.tick(5)
 
 
